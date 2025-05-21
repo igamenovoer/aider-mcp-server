@@ -294,3 +294,58 @@ def test_complex_tasks(temp_dir):
     except (AttributeError, TypeError):
         # Some implementations might handle memory differently
         pass
+
+def test_diff_output(temp_dir):
+    """Test that code_with_aider produces proper git diff output when modifying existing files."""
+    # Create an initial math file
+    test_file = os.path.join(temp_dir, "math_operations.py")
+    initial_content = """# Math operations module
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+"""
+    
+    with open(test_file, "w") as f:
+        f.write(initial_content)
+    
+    # Commit the initial file to git
+    subprocess.run(["git", "add", "math_operations.py"], cwd=temp_dir, capture_output=True, text=True, check=True)
+    subprocess.run(["git", "commit", "-m", "Add initial math operations"], cwd=temp_dir, capture_output=True, text=True, check=True)
+    
+    # Now modify the file using Aider
+    prompt = "Add a multiply function that takes two parameters and returns their product. Also add a docstring to the existing add function."
+    
+    result = code_with_aider(
+        ai_coding_prompt=prompt,
+        relative_editable_files=["math_operations.py"],
+        model=DEFAULT_TESTING_MODEL,
+        working_dir=temp_dir
+    )
+    
+    # Parse the JSON result
+    result_dict = json.loads(result)
+    
+    # Check that it succeeded
+    assert result_dict["success"] is True, "Expected code_with_aider to succeed"
+    assert "diff" in result_dict, "Expected diff to be in result"
+    
+    # Verify the diff contains expected git diff markers
+    diff_content = result_dict["diff"]
+    assert "diff --git" in diff_content, "Expected git diff header in diff output"
+    assert "@@" in diff_content, "Expected hunk headers (@@) in diff output"
+    assert "+++ b/math_operations.py" in diff_content, "Expected new file marker in diff"
+    assert "--- a/math_operations.py" in diff_content, "Expected old file marker in diff"
+    
+    # Verify the diff shows additions (lines starting with +)
+    diff_lines = diff_content.split('\n')
+    added_lines = [line for line in diff_lines if line.startswith('+') and not line.startswith('+++')]
+    assert len(added_lines) > 0, "Expected to find added lines in diff"
+    
+    # Check that multiply function was actually added to the file
+    with open(test_file, "r") as f:
+        final_content = f.read()
+    
+    assert "def multiply" in final_content, "Expected multiply function to be added"
+    assert "docstring" in final_content.lower() or '"""' in final_content, "Expected docstring to be added"
