@@ -7,6 +7,7 @@ from aider.models import Model
 from aider.coders import Coder
 from aider.io import InputOutput
 from aider_mcp_server.atoms.logging import get_logger
+from aider_mcp_server.atoms.utils import DEFAULT_EDITOR_MODEL
 
 # Configure logging for this module
 logger = get_logger(__name__)
@@ -182,7 +183,7 @@ def code_with_aider(
     ai_coding_prompt: str,
     relative_editable_files: List[str],
     relative_readonly_files: List[str] = [],
-    model: str = "gemini/gemini-2.5-pro-exp-03-25",
+    model: str = DEFAULT_EDITOR_MODEL,
     working_dir: str = None,
 ) -> str:
     """
@@ -192,7 +193,7 @@ def code_with_aider(
         ai_coding_prompt (str): The prompt for the AI to execute.
         relative_editable_files (List[str]): List of files that can be edited.
         relative_readonly_files (List[str], optional): List of files that can be read but not edited. Defaults to [].
-        model (str, optional): The model to use. Defaults to "gemini/gemini-2.5-pro-exp-03-25".
+        model (str, optional): The model to use. Defaults to DEFAULT_EDITOR_MODEL.
         working_dir (str, required): The working directory where git repository is located and files are stored.
 
     Returns:

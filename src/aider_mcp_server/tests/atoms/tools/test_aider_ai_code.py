@@ -5,6 +5,7 @@ import pytest
 import shutil
 import subprocess
 from aider_mcp_server.atoms.tools.aider_ai_code import code_with_aider
+from aider_mcp_server.atoms.utils import DEFAULT_TESTING_MODEL
 
 @pytest.fixture
 def temp_dir():
@@ -236,7 +237,7 @@ def test_complex_tasks(temp_dir):
     result = code_with_aider(
         ai_coding_prompt=prompt,
         relative_editable_files=[test_file],
-        model="gemini/gemini-2.5-pro-exp-03-25",  # Main model
+        model=DEFAULT_TESTING_MODEL,  # Main model
         working_dir=temp_dir  # Pass the temp directory as working_dir
     )
     
