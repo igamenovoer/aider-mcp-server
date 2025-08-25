@@ -67,4 +67,8 @@ focus_output/
 
 # Log files
 logs/
-*.log
+*.log# pixi environments
+.pixi
+
+# project secrets
+.project-secrets.json

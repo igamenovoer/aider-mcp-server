@@ -5,6 +5,17 @@
 
 This server allows Claude Code to offload AI coding tasks to Aider, the best open source AI coding assistant. By delegating certain coding tasks to Aider, we can reduce costs, gain control over our coding model and operate Claude Code in a more orchestrative way to review and revise code.
 
+## How this MCP server runs
+
+- This project implements an MCP stdio server. It reads/writes over stdin/stdout using the MCP Python library and exposes two tools: `aider_ai_code` and `list_models`.
+- The process must be launched with a working directory that is a valid Git repository. All file paths in tool calls are interpreted relative to this directory.
+- Model selection:
+  - At server start, you can set a default editor model with `--editor-model` (defaults to "openai/gpt-4.1").
+  - Each `aider_ai_code` call may optionally pass a `model` to override the default for that call.
+- Requirements:
+  - `git` must be installed and available on PATH (used to compute diffs and validate repo).
+  - Set the relevant API key for the chosen model provider (e.g., OPENAI_API_KEY, GEMINI_API_KEY, etc.) in the environment.
+
 ## Setup
 
 0. Clone the repository:
@@ -16,7 +27,7 @@ git clone https://github.com/disler/aider-mcp-server.git
 1. Install dependencies:
 
 ```bash
-uv sync
+pixi install
 ```
 
 2. Create your environment file:
@@ -34,31 +45,48 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ...see .env.sample for more
 ```
 
-4. Copy and fill out the the `.mcp.json` into the root of your project and update the `--directory` to point to this project's root directory and the `--current-working-dir` to point to the root of your project.
+4. Copy and fill out the the `.mcp.json` into the root of your project and update the `-p` (project path) to point to this project's root directory and the `--current-working-dir` to point to the root of your project.
 
 ```json
 {
   "mcpServers": {
     "aider-mcp-server": {
       "type": "stdio",
-      "command": "uv",
+      "command": "pixi",
       "args": [
-        "--directory",
+        "-p",
         "<path to this project>",
         "run",
         "aider-mcp-server",
-        "--editor-model",
-        "gpt-4o",
+        "--project-secrets",
+        ".project-secrets.json",
         "--current-working-dir",
         "<path to your project>"
       ],
       "env": {
         "GEMINI_API_KEY": "<your gemini api key>",
         "OPENAI_API_KEY": "<your openai api key>",
-        "ANTHROPIC_API_KEY": "<your anthropic api key>",
-        ...see .env.sample for more
+        "ANTHROPIC_API_KEY": "<your anthropic api key>"
       }
     }
+  }
+}
+```
+
+Notes:
+- When `--project-secrets .project-secrets.json` is provided, the server will load project-level LLM config on startup and set environment variables for OpenAI-compatible endpoints (OPENAI_API_KEY, OPENAI_BASE_URL/OPENAI_API_BASE). If a `model_name` is present, it will be used as the default editor model unless you explicitly pass `--editor-model` at startup or a per-call `model` in the tool request.
+- You can still add or override API keys via the `env` section above or the shell environment.
+
+Example `.project-secrets.json`:
+```json
+{
+  "llm": {
+    "type": "OpenAI-Compatible",
+    "base_url": "https://your.openai.compatible.endpoint/v1",
+    "model_name": "gpt-5",
+    "api_key": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "reasoning_effort": "medium",
+    "verbosity": "medium"
   }
 }
 ```
@@ -69,20 +97,38 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 To run all tests:
 
 ```bash
-uv run pytest
+pixi run pytest
 ```
 
 To run specific tests:
 
 ```bash
 # Test listing models
-uv run pytest src/aider_mcp_server/tests/atoms/tools/test_aider_list_models.py
+pixi run pytest src/aider_mcp_server/tests/atoms/tools/test_aider_list_models.py
 
 # Test AI coding
-uv run pytest src/aider_mcp_server/tests/atoms/tools/test_aider_ai_code.py
+pixi run pytest src/aider_mcp_server/tests/atoms/tools/test_aider_ai_code.py
 ```
 
 Note: The AI coding tests require a valid API key for the Gemini model. Make sure to set it in your `.env` file before running the tests.
+
+## Run locally (without Claude)
+
+You can run the stdio server directly for debugging:
+
+```bash
+# Show CLI help
+pixi run aider-mcp-server -- --help
+
+# Start the server with a chosen default editor model and a target Git repo
+pixi run aider-mcp-server -- \
+  --editor-model "openai/gpt-4.1" \
+  --current-working-dir "<path to your git project>"
+```
+
+Notes:
+- The process communicates via stdio and is intended to be launched by an MCP client. When run directly, it will wait on stdio for MCP requests.
+- Ensure your environment has the appropriate API key set, e.g. `OPENAI_API_KEY`, `GEMINI_API_KEY`, etc.
 
 ## Add this MCP server to Claude Code
 
@@ -91,7 +137,7 @@ Note: The AI coding tests require a valid API key for the Gemini model. Make sur
 ```bash
 claude mcp add aider-mcp-server -s local \
   -- \
-  uv --directory "<path to the aider mcp server project>" \
+  pixi -p "<path to the aider mcp server project>" \
   run aider-mcp-server \
   --editor-model "gemini/gemini-2.5-pro-exp-03-25" \
   --current-working-dir "<path to your project>"
@@ -102,7 +148,7 @@ claude mcp add aider-mcp-server -s local \
 ```bash
 claude mcp add aider-mcp-server -s local \
   -- \
-  uv --directory "<path to the aider mcp server project>" \
+  pixi -p "<path to the aider mcp server project>" \
   run aider-mcp-server \
   --editor-model "gemini/gemini-2.5-pro-preview-03-25" \
   --current-working-dir "<path to your project>"
@@ -113,7 +159,7 @@ claude mcp add aider-mcp-server -s local \
 ```bash
 claude mcp add aider-mcp-server -s local \
   -- \
-  uv --directory "<path to the aider mcp server project>" \
+  pixi -p "<path to the aider mcp server project>" \
   run aider-mcp-server \
   --editor-model "openrouter/openrouter/quasar-alpha" \
   --current-working-dir "<path to your project>"
@@ -124,7 +170,7 @@ claude mcp add aider-mcp-server -s local \
 ```bash
 claude mcp add aider-mcp-server -s local \
   -- \
-  uv --directory "<path to the aider mcp server project>" \
+  pixi -p "<path to the aider mcp server project>" \
   run aider-mcp-server \
   --editor-model "fireworks_ai/accounts/fireworks/models/llama4-maverick-instruct-basic" \
   --current-working-dir "<path to your project>"
@@ -157,8 +203,7 @@ This tool allows you to run Aider to perform AI coding tasks based on a provided
 - `ai_coding_prompt` (string, required): The natural language instruction for the AI coding task.
 - `relative_editable_files` (list of strings, required): A list of file paths (relative to the `current_working_dir`) that Aider is allowed to modify. If a file doesn't exist, it will be created.
 - `relative_readonly_files` (list of strings, optional): A list of file paths (relative to the `current_working_dir`) that Aider can read for context but cannot modify. Defaults to an empty list `[]`.
-- `model` (string, optional): The primary AI model Aider should use for generating code. Defaults to `"gemini/gemini-2.5-pro-exp-03-25"`. You can use the `list_models` tool to find other available models.
-- `editor_model` (string, optional): The AI model Aider should use for editing/refining code, particularly when using architect mode. If not provided, the primary `model` might be used depending on Aider's internal logic. Defaults to `None`.
+- `model` (string, optional): The primary AI model Aider should use for generating code. If omitted, the server uses the startup editor model provided via `--editor-model` (default: "openai/gpt-4.1"). You can use the `list_models` tool to discover supported models.
 
 **Example Usage (within an MCP request):**
 

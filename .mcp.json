@@ -2,14 +2,14 @@
   "mcpServers": {
     "aider-mcp-server": {
       "type": "stdio",
-      "command": "uv",
+      "command": "pixi",
       "args": [
-        "--directory",
+        "-p",
         ".",
         "run",
         "aider-mcp-server",
-        "--editor-model",
-        "gemini/gemini-2.5-pro-preview-03-25",
+        "--project-secrets",
+        ".project-secrets.json",
         "--current-working-dir",
         "."
       ],

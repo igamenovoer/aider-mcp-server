@@ -22,3 +22,25 @@ aider-mcp-server = "aider_mcp_server:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tool.pixi.dependencies]
+python = "3.12.*"
+
+[tool.pixi.pypi-dependencies]
+aider-mcp-server = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+# Expose the installed console script (allows extra args via: pixi run aider-mcp-server -- --editor-model ... )
+aider-mcp-server = "aider-mcp-server"
+# Test runners
+pytest = "pytest"
+test = "pytest -q"
+client-mcp-test = "python scripts/client_mcp_test.py"
+
+client-create-show-system-info = "python scripts/client_create_show_system_info.py"
+
+show-system-info = "python show-system-info.py"
