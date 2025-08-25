@@ -1,14 +1,45 @@
 #!/usr/bin/env python3
 """
 Prints information about the current Python interpreter and runtime environment.
+
+Now uses the standard logging module for output.
 """
 
 import os
 import sys
 import platform
+import logging
+
+
+def _get_log_level_from_env() -> int:
+    level = os.getenv("LOG_LEVEL", "INFO").upper()
+    return getattr(logging, level, logging.INFO)
+
+
+def configure_logging() -> logging.Logger:
+    """
+    Configure a logger that writes to stdout with a simple message-only format.
+    Respects LOG_LEVEL environment variable (defaults to INFO).
+    """
+    logger = logging.getLogger("print_python_info")
+
+    # Avoid adding multiple handlers if configured more than once.
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(_get_log_level_from_env())
+
+    handler = logging.StreamHandler(stream=sys.stdout)
+    formatter = logging.Formatter("%(message)s")
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
+    return logger
 
 
 def print_python_info() -> None:
+    logger = logging.getLogger("print_python_info")
+
     # Basic Python interpreter details
     impl = platform.python_implementation()
     version = platform.python_version()
@@ -37,43 +68,44 @@ def print_python_info() -> None:
     default_encoding = sys.getdefaultencoding() or "<unknown>"
 
     # Output
-    print("Python Interpreter Information")
-    print("------------------------------")
-    print(f"Implementation:        {impl}")
-    print(f"Version:               {version}")
-    print(f"Full version string:   {version_full}")
-    print(f"Build:                 {build_no} ({build_date})")
-    print(f"Compiler:              {compiler}")
-    print()
-    print("Executable and Environment")
-    print("--------------------------")
-    print(f"Executable:            {executable}")
-    print(f"Prefix:                {prefix}")
-    print(f"Base prefix:           {base_prefix}")
-    print(f"In virtual environment:{in_venv}")
+    logger.info("Python Interpreter Information")
+    logger.info("------------------------------")
+    logger.info(f"Implementation:        {impl}")
+    logger.info(f"Version:               {version}")
+    logger.info(f"Full version string:   {version_full}")
+    logger.info(f"Build:                 {build_no} ({build_date})")
+    logger.info(f"Compiler:              {compiler}")
+    logger.info("")
+    logger.info("Executable and Environment")
+    logger.info("--------------------------")
+    logger.info(f"Executable:            {executable}")
+    logger.info(f"Prefix:                {prefix}")
+    logger.info(f"Base prefix:           {base_prefix}")
+    logger.info(f"In virtual environment:{in_venv}")
     if venv_env:
-        print(f"VIRTUAL_ENV:           {venv_env}")
-    print()
-    print("Platform")
-    print("--------")
-    print(f"Platform:              {plat}")
-    print(f"System:                {system}")
-    print(f"Release:               {release}")
-    print(f"Machine:               {machine}")
-    print(f"Processor:             {processor}")
-    print(f"Architecture:          {arch_bits}, linkage={arch_linkage}")
-    print(f"Byte order:            {byteorder}")
-    print()
-    print("Encodings")
-    print("---------")
-    print(f"Filesystem encoding:   {fs_encoding}")
-    print(f"Default encoding:      {default_encoding}")
+        logger.info(f"VIRTUAL_ENV:           {venv_env}")
+    logger.info("")
+    logger.info("Platform")
+    logger.info("--------")
+    logger.info(f"Platform:              {plat}")
+    logger.info(f"System:                {system}")
+    logger.info(f"Release:               {release}")
+    logger.info(f"Machine:               {machine}")
+    logger.info(f"Processor:             {processor}")
+    logger.info(f"Architecture:          {arch_bits}, linkage={arch_linkage}")
+    logger.info(f"Byte order:            {byteorder}")
+    logger.info("")
+    logger.info("Encodings")
+    logger.info("---------")
+    logger.info(f"Filesystem encoding:   {fs_encoding}")
+    logger.info(f"Default encoding:      {default_encoding}")
 
 
 if __name__ == "__main__":
+    logger = configure_logging()
     try:
         print_python_info()
-    except Exception as exc:
-        # Ensure any unexpected error is clearly visible
-        print(f"Error while gathering Python interpreter information: {exc}", file=sys.stderr)
+    except Exception:
+        # Ensure any unexpected error is clearly visible with traceback
+        logger.exception("Error while gathering Python interpreter information")
         sys.exit(1)
