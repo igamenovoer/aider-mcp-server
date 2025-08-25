@@ -1,6 +1,6 @@
 def hello_world() -> str:
-    """Return the classic 'Hello, World!' greeting."""
-    return "Hello, World!"
+    """Return a casual 'Hey, world!' greeting."""
+    return "Hey, world!"
 
 
 if __name__ == "__main__":
